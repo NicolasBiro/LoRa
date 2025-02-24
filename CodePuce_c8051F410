@@ -1,0 +1,57 @@
+#include <c8051F410.h> // Inclusion des définitions et des macros allant avec le systèmeF410
+
+// Définit les broches RX, TX, DIO, POINT, TESTE, RESET, CLOCK, IN, OUT, MSEL et ajout de la variable i
+sbit RX = P2^2;
+sbit TX = P2^1;
+sbit RESET = P3^4;
+sbit SCLK = P0^3;
+sbit SDI = P0^2;
+sbit SDO = P0^1;
+sbit MSEL = P0^0;
+
+unsigned int i;
+void tempo (unsigned int);
+void write (unsigned short, unsigned short);
+
+void main()
+{
+    OSCXCN=0x83;  // Permet d'assigner une valeur à la fréquence
+                  // du microcontrôleur (vitesse d'envoi des bits)
+    PCON=0x00;    // Désactive le powerfail
+    TMOD=0x00;    // Accepte la commutation entre broche physique et fonction interne
+    PMDOUT=0xFB;  // On met à 1 des broches, pour recovery seul reset (int broche P0 C8051F410)
+    SDO=1;
+    MSEL=1;SCLK=0; tempo(10);    //Permet de créer un petit décalage entre RST et MSEL
+    RX=0;          RESET=0;      // Configuration des ports
+    
+    while(1) // Boucle principale, tourne en boucle à l'infini
+    {
+        write(0x01, 0xF5);  // Envoyer une trame de données sur le bus SPI
+        tempo(10);          // Attendre pendant 10 millisecondes
+    }
+}
+
+void tempo (unsigned int t) //Fonction temps, afin de laisser à la machine le Temps de transmission (t)
+{
+    unsigned int i;     // Nous déclarons i
+    for(i=0;i<t;i++);   // Nous créons une condition servant à ralentir le processus selon la charge
+}
+
+// La fonction write permet d'écrire physiquement avec une adresse de 16 bits et une donnée de 16 bits
+void write (unsigned short add, unsigned short dat)
+{
+    unsigned short val16, masque16=0x8000;
+    val16=(0x8000)|(add<<8)|dat;  // On combine l'adresse et les données dans une variable de 16 bits
+    
+    MSEL=0;
+    tempo(10);
+    for(i=0;i<16;i++) // On itère 16 fois pour envoyer les 16 bits de la variable val16
+    {
+        if(val16&masque16) SDO=1; // Si le bit correspondant dans val16 est à 1, on envoie un 1 sur la broche SDO
+        else SDO=0;               // Sinon, on envoie un 0 sur la broche SDO
+        tempo(10);                // On attend pour stabiliser le bit envoyé sur SDO et on attend
+        SCLK=1; tempo(10);        // On set la broche SCLK à 1 pour valider la transaction et on attend
+        masque16=masque16>>1;     // On décale le masque d'un bit vers la droite pour passer au bit suivant
+    }
+    SCLK=0;SDO=0;tempo(10);MSEL=1;tempo(5000); // On met les broches à l'état initial pour terminer la transmission ainsi qu'une pause temps
+}
