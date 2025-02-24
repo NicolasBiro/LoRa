@@ -1,0 +1,44 @@
+#include <c8051F410.h> // Inclusion des définitions et des macros allant avec le systèmeF410
+
+// Définit les broches RX,TX,DIO,POINT,TESTE,RESET,CLOCK,IN,OUT,MSEL et ajout de la variable i
+sbit RX = P2^2;
+sbit TX = P2^1;
+sbit RESET = P3^4;
+sbit SCLK = P0^3;
+sbit SDI = P0^2;
+sbit SDO = P0^1;
+sbit MSEL = P0^0;
+
+unsigned int i;
+void tempo (unsigned int);
+void main()
+{
+    OSCXCN=0x83;   // Permet d'assigner une valeur à la fréquence
+                   // du microcontrôleur (vitesse d'envoi des bits)
+    PCON=0x00;     // Désactive le powerfail
+    TMOD=0x00;     // Accepte la commutation entre broche physique et fonction interne
+    PMDOUT=0xFB;   // Mise à 1 des modules que l'on souhaite recovery seul reset (int broche P0 C8051F410)
+    
+    MSEL=1;SCLK=0; tempo(10);    //Permet de créer le petit décalage entre RST et MSEL
+    while(1)
+    {
+        MSEL=0; SCLK=0;tempo(10); //Nous allons mettre une tempo 10 permettant d'avoir un
+                                  //décalage temps entre MSEL et SCLK
+        for(i=0;i<16;i++)        //Cette boucle permet de fixer le nombre de coup
+                                  //d'horloge que l'on souhaite
+        {
+            SCLK=1;      //Allumer SCLK
+            tempo(10);   //Insertion servant de temps
+            SCLK=0;      //Eteindre SCLK
+            tempo(10);   //Insertion servant de temps
+        }
+    }
+    MSEL=1;SCLK=0;
+    tempo(5000);
+}
+
+void tempo (unsigned int t) //Fonction temps, afin de laisser à la machine le Temps de transmission (t)
+{
+    unsigned int i;      // Nous déclarons i
+    for(i=0;i<t;i++);    // Nous créons une condition servant à ralentir le processus selon la charge
+}
